@@ -52,6 +52,7 @@ sealed trait Segment:
   def derivativeX(t: Double): Double
   def derivativeY(t: Double): Double
   def derivative(t: Double): Whit = Whit(derivativeX(t), derivativeY(t))
+  def transform(m: Matrix): Segment
 
   protected lazy val lut: Array[Whit] =
     val n = (length / 5).toInt min 4
@@ -90,6 +91,8 @@ object Segment:
 
     def derivativeX(t: Double): Double = end.x - start.x
     def derivativeY(t: Double): Double = end.y - start.y
+
+    override def transform(m: Matrix): Line = Line(m * start, m * end)
 
   case class Quad(start: Whit, cp: Whit, end: Whit) extends Segment:
 
@@ -135,6 +138,8 @@ object Segment:
 
     lazy val length: Double = geom.length(deriv)
 
+    override def transform(m: Matrix): Quad = Quad(m * start, m * cp, m * end)
+
   case class Cubic(start: Whit, cp1: Whit, cp2: Whit, end: Whit) extends Segment:
     
     override def pointX(t: Double): Double =
@@ -164,3 +169,5 @@ object Segment:
       Box.fromCorners(minX, minY, maxX, maxY)
 
     lazy val length: Double = geom.length(deriv)
+
+    override def transform(m: Matrix): Cubic = Cubic(m * start, m * cp1, m * cp2, m * end)

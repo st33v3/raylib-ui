@@ -13,3 +13,15 @@ case class Dim(w: Double, h: Double):
   infix def cross(that: Dim): Double = w * that.h - h * that.w
   def =~=(that: Dim): Boolean = w =~= that.w && h =~= that.h
   def asWhit: Whit = Whit(w, h)
+
+  def unit: Dim =
+    if length =~= 0.0 then throw new Exception("Cannot normalize zero-length vector")
+    this / length
+
+  def slength: Double = w * w + h * h
+  lazy val length: Double = Math.sqrt(slength)
+
+object Dim:
+  val zero: Dim = Dim(0, 0)
+  val unitX: Dim = Dim(1, 0)
+  val unitY: Dim = Dim(0, 1)

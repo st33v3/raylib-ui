@@ -54,3 +54,5 @@ case class Spline(segments: Seq[Segment]):
 
   def size: Int = segments.size
 
+  def transform(m: Matrix): Spline =
+    Spline(segments.map(_.transform(m)))

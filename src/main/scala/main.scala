@@ -29,14 +29,17 @@ def mapSegment(s: Segment): (Color, Float) => Unit =
         drawSplineSegmentBezierCubic(start, cp1, cp2, end, t, c)
 @main
 def main(): Unit =
-  val (spline, circles) = SVG.load(".\\vrana.svg", 2)
+  val (spline0, circles0) = SVG.load(".\\vrana.svg")
+  val m = Matrix.scale(2)
+  val spline = spline0.transform(m)
+  val circles = circles0.map(c => m * c)
   println(s"Loaded ${spline.size} spline and ${circles.length} circles")
   println(spline)
   println(spline.segments.map(_.length).sum)
   val segments = spline.segments.map(mapSegment)
   val screen = Rect(0f, 0f, 800f, 480f)
   setTargetFPS(30)
-  setConfigFlags(FLAG_MSAA_4X_HINT)
+  setConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_HIGHDPI | FLAG_VSYNC_HINT)
   initWindow(screen.w.toInt, screen.h.toInt, "raylib [core] example - basic window")
   val catBad = loadTexture(".\\cat-bad.png")
   println(catBad)
@@ -101,8 +104,8 @@ def main(): Unit =
       case _ if isKeyDown(KeyboardKey.RIGHT) => 90
       case _ if isKeyDown(KeyboardKey.LEFT) => -90
       case _ if isKeyDown(KeyboardKey.DOWN) => 180
-      case _ if isKeyDown(KeyboardKey.UP) => frame.toFloat / 0.3f
-      case _ => 0
+      case _ if isKeyDown(KeyboardKey.UP) => 0
+      case _ => frame.toFloat / 0.3f
     drawTexturePro(catBad, catBad.bounds, tr, (tr.size/ 2).asPoint, angle, Color.BEIGE)
     //drawRectangleLinesEx(tr, 2, Color.RED)
     drawFPS(screen.end.x.toInt - 100, screen.end.y.toInt - 20)

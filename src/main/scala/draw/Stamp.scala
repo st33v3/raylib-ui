@@ -1,3 +1,5 @@
 package draw
 
-case class Stamp(text: String, style: Style, typeface: Typeface) extends Drawable
+import geom.Whit
+
+case class Stamp(text: String, pos: Whit, style: Style, typeface: Typeface) extends Drawable
