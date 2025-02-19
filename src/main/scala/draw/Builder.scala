@@ -4,98 +4,113 @@ import geom.{Box, Dim, Matrix, Segment, Spline, Whit}
 
 import scala.collection.mutable.ListBuffer
 
-class Builder(private var style: Style, private var typeface: Typeface):
-  private val buffer = ListBuffer.empty[Drawable]
-  private var stack = List.empty[(Style, Typeface)]
+class Builder[L](private var style: Style, private var typeface: Typeface):
+  private val buffer = ListBuffer.empty[(Drawable, Option[L])]
 
   def getStyle: Style = style
   def setStyle(style1: Style): Unit = style = style1
   def getTypeface: Typeface = typeface
   def setTypeface(typeface1: Typeface): Unit = typeface = typeface1
 
-  def result(): List[Drawable] = buffer.result()
+  def result(): List[(Drawable, Option[L])] = buffer.result()
 
-  def push(): Unit =
-    stack = (style, typeface) :: stack
+  def add(drawable: Drawable): Drawable =
+    buffer += drawable -> None
+    drawable
+  def addPair(p: (Drawable, Option[L])): Unit = buffer += p
+  def addPairs(ps: Iterable[(Drawable, Option[L])]): Unit = buffer ++= ps
+  def attribute(drawable: Drawable, layout: L): Unit =
+    val idx = buffer.lastIndexWhere(t => t._1 == drawable)
+    if idx >= 0 then buffer.update(idx, (drawable, Some(layout)))
+    else throw IllegalArgumentException(s"Drawable not found: $drawable")
 
-  def pop(): Unit =
-    style = stack.head._1
-    typeface = stack.head._2
-    stack = stack.tail
-
-  def add(drawable: Drawable): Unit = buffer += drawable
-
-class PathBuilder(private var current: Whit):
-  private val segments = ListBuffer.empty[Segment]
-  def set(start: Whit): Unit = current = start
-  def get: Whit = current
-  def add(segment: Segment): Unit = segments += segment
-  def result(): Spline = Spline(segments.result())
-
-object PathBuilder:
-  def spline(start: Whit)(build: PathBuilderBody): Spline =
-    val pbld = new PathBuilder(start)
-    build(using pbld)
-    pbld.result()
-
-  def moveTo(end: Whit)(using bld: PathBuilder): Unit =
-    bld.set(end)
-
-  def lineTo(end: Whit)(using bld: PathBuilder): Unit =
-    bld.add(Segment.Line(bld.get, end))
-    bld.set(end)
-
-  def quadTo(cp: Whit, end: Whit)(using bld: PathBuilder): Unit =
-    bld.add(Segment.Quad(bld.get, cp, end))
-    bld.set(end)
-
-  def cubicTo(cp1: Whit, cp2: Whit, end: Whit)(using bld: PathBuilder): Unit =
-    bld.add(Segment.Cubic(bld.get, cp1, cp2, end))
-    bld.set(end)
-
-  def offset(using bld: PathBuilder): Dim = bld.get.asDim
+  def duplicate[L2](): Builder[L2] =
+    new Builder[L2](style, typeface)
 
 
-type PathBuilderBody = PathBuilder ?=> Unit
 
-type BuilderBody = Builder ?=> Unit
+
+type BuilderBody[L] = Builder[L] ?=> Unit
 
 object Builder:
-  def drawable(style: Style, typeface: Typeface)(build: BuilderBody): Drawable =
+  def drawable(style: Style, typeface: Typeface)(build: BuilderBody[Nothing]): Drawable =
     val bld = new Builder(style, typeface)
     build(using bld)
-    bld.result().head
+    Group(bld.result().map(_._1))
 
-  def style(style1: Style)(build: BuilderBody)(using bld: Builder): Unit = style(_ => style1)(build)
-  def style(styleMod: Style => Style)(build: BuilderBody)(using bld: Builder): Unit =
-    bld.push()
+  def style[L](style1: Style)(build: BuilderBody[L])(using bld: Builder[L]): Unit = style(_ => style1)(build)
+  def style[L](styleMod: Style => Style)(build: BuilderBody[L])(using bld: Builder[L]): Unit =
+    val bld2 = bld.duplicate[L]()
     bld.setStyle(styleMod(bld.getStyle))
-    build(using bld)
-    bld.pop()
+    build(using bld2)
+    bld.addPairs(bld2.result())
 
-  def typeface(face: Typeface)(build: BuilderBody)(using bld: Builder): Unit = typeface(_ => face)(build)
-  def typeface(faceMod: Typeface => Typeface)(build: BuilderBody)(using bld: Builder): Unit =
-    bld.push()
+  def typeface[L](face: Typeface)(build: BuilderBody[L])(using bld: Builder[L]): Unit = typeface(_ => face)(build)
+  def typeface[L](faceMod: Typeface => Typeface)(build: BuilderBody[L])(using bld: Builder[L]): Unit =
+    val bld2 = bld.duplicate[L]()
     bld.setTypeface(faceMod(bld.getTypeface))
-    build(using bld)
-    bld.pop()
+    build(using bld2)
+    bld.addPairs(bld2.result())
 
-  def rectangle(box: Box)(using bld: Builder): Unit =
+  def rectangle[L](box: Box)(using bld: Builder[L]): Drawable =
     bld.add(Rectangle(box, bld.getStyle))
 
-  def path(start: Whit, transform: Matrix = Matrix.identity)(build: PathBuilderBody)(using bld: Builder): Unit =
+  def path[L](start: Whit, transform: Matrix = Matrix.identity)(build: PathBuilderBody)(using bld: Builder[L]): Drawable =
     val spline0 = PathBuilder.spline(start)(build)
     val spline = if transform.eq(Matrix.identity) then spline0 else spline0.transform(transform)
     bld.add(Path(spline, bld.getStyle))
 
-  def poly(points: Seq[Whit])(using bld: Builder): Unit =
+  def poly[L](points: Seq[Whit])(using bld: Builder[L]): Drawable =
     bld.add(Poly(points, bld.getStyle))
 
-  def poly(center: Whit, radius: Double, vertices: Int, start: Dim = Dim.unitX)(using bld: Builder): Unit =
+  def poly[L](center: Whit, radius: Double, vertices: Int, start: Dim = Dim.unitX)(using bld: Builder[L]): Drawable =
     val matrix = Matrix.rotate(start) * Matrix.scale(radius)
     val angle = 2 * Math.PI / vertices
-    val points = (0 until vertices).map(i => center + matrix * Dim(Math.cos(i * angle), Math.sin(i * angle)))
+    val points = (0 to vertices).map(i => center + matrix * Dim(Math.cos(i * angle), Math.sin(i * angle)))
     poly(points)
 
-  def text(text: String, pos: Whit)(using bld: Builder): Unit =
+  def star[L](center: Whit, radius1: Double, radius2: Double, vertices: Int, start: Dim = Dim.unitX)(using bld: Builder[L]): Drawable =
+    val matrix1 = Matrix.rotate(start) * Matrix.scale(radius1)
+    val matrix2 = Matrix.rotate(start) * Matrix.scale(radius2)
+    val angle = Math.PI / vertices
+    val points = (0 to 2 * vertices).map(i => center + (if i % 2 == 0 then matrix1 else matrix2) * Dim(Math.cos(i * angle), Math.sin(i * angle)))
+    poly(points)
+
+  def text[L](text: String, pos: Whit)(using bld: Builder[L]): Drawable =
     bld.add(Stamp(text, pos, bld.getStyle, bld.getTypeface))
+
+  private def center(p: (Drawable, Option[Dim])): Whit = p._1.bounds.center + p._2.getOrElse(Dim.zero)
+
+  def stack[L]()(build: BuilderBody[Dim])(using o: Builder[L]): Drawable =
+    val bld = o.duplicate[Dim]()
+    build(using bld)
+    val drawables = bld.result()
+    if drawables.isEmpty then throw IllegalArgumentException("Stack must contain at least one drawable")
+    val c = center(drawables.head)
+    val rest = drawables.tail.map: p =>
+      val c2 = center(p)
+      p._1.move(c.x - c2.x, c.y - c2.y)
+    o.add(Group( drawables.head._1 +: rest))
+
+  extension (d: Drawable)
+    def @@[L](layout: L)(using bld: Builder[L]): Unit =
+      bld.attribute(d, layout)
+
+object test:
+  def hu(): Unit = {
+    import Builder.*
+    import PathBuilder.*
+    val d = drawable(Style.default, Typeface.default) {
+      rectangle(Box(Whit(0, 0), Dim(100, 100)))
+      path(Whit(0, 0)) {
+        moveTo(Whit(10, 10))
+        lineTo(Whit(20, 20))
+        quadTo(Whit(30, 30), Whit(40, 40))
+        cubicTo(Whit(50, 50), Whit(60, 60), Whit(70, 70))
+      }
+      text("Hello", Whit(80, 80))
+      stack():
+        rectangle(Box(Whit(0, 0), Dim(10, 10))) @@ Dim(5, 5)
+        rectangle(Box(Whit(10, 10), Dim(10, 10)))
+    }
+  }

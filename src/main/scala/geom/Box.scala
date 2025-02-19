@@ -1,13 +1,21 @@
 package geom
 
+import geom.Dir
 import geom.Segment.Quad
 
 case class Box(x: Double, y: Double, w: Double, h: Double):
   assert(w >= 0 && h >= 0, s"Invalid Box($x, $y, $w, $h)")
-  lazy val start = Whit(x, y)
-  lazy val end = Whit(x + w, y + h)
-  lazy val center = Whit(x + w / 2, y + h / 2)
-  lazy val size = Dim(w, h)
+  lazy val start: Whit = Whit(x, y)
+  lazy val end: Whit = Whit(x + w, y + h)
+  lazy val center: Whit = Whit(x + w / 2, y + h / 2)
+  lazy val size: Dim = Dim(w, h)
+  def top: Double = y
+  def bottom: Double = y + h
+  def left: Double = x
+  def right: Double = x + w
+
+  def modify[M](modifier: M)(using bm: BoxModifier[M]): Box = bm.modify(this, modifier)
+
   def contains(p: Whit): Boolean = p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h
   def intersects(other: Box): Boolean = x < other.x + other.w && x + w > other.x && y < other.y + other.h && y + h > other.y
 
@@ -21,7 +29,7 @@ case class Box(x: Double, y: Double, w: Double, h: Double):
     val dy = (point.y - y).abs max (point.y - (y + h)).abs
     dx * dx + dy * dy
 
-  def =~=(other: Box, epsilon: Double): Boolean =
+  def =~=(other: Box): Boolean =
     x =~= other.x && y =~= other.y && w =~= other.w && h =~= other.h
 
   def union(other: Box): Box =
@@ -31,12 +39,26 @@ case class Box(x: Double, y: Double, w: Double, h: Double):
     val y2 = (y + h) max (other.y + other.h)
     Box.fromCorners(x1, y1, x2, y2)
 
-  def toSpline: Spline =
-    Spline(List(
-      Segment.Line(start, Whit(x + w, y)),
-      Segment.Line(Whit(x + w, y), end),
-      Segment.Line(end, Whit(x, y + h)),
-      Segment.Line(Whit(x, y + h), start)))
+  def coordinate(dir: Dir): Double =
+    dir.assertMain()
+    dir match
+      case Dir.N => top
+      case Dir.E => right
+      case Dir.S => bottom
+      case Dir.W => left
+
+  def point(dir: Dir): Whit =
+    import Dir.*
+    dir match
+      case N => Whit(center.x, top)
+      case NE => Whit(right, top)
+      case E => Whit(right, center.y)
+      case SE =>  end
+      case S => Whit(center.x, bottom)
+      case SW => Whit(left, bottom)
+      case W => Whit(left, center.y)
+      case NW => start
+      case CENTER => center
 
 object Box:
   def apply(x: Double, y: Double, w: Double, h: Double): Box = new Box(x, y, w, h)

@@ -56,3 +56,20 @@ case class Spline(segments: Seq[Segment]):
 
   def transform(m: Matrix): Spline =
     Spline(segments.map(_.transform(m)))
+
+  lazy val bounds: Box = segments.tail.foldLeft(segments.head.bounds)(_ `union` _.bounds)
+  
+object Spline:
+  def fromBox(box: Box): Spline =
+    Spline((0 to 4).map(l => Segment.Line(box.point(Dir.NW.step(l * 2)), box.point(Dir.NW.step(l * 2 + 2)))))
+
+  def approxCircle(center: Whit, radius: Double): Spline =
+      // Approximation of a circle with 4 cubic Bezier curves (https://spencermortensen.com/articles/bezier-circle/)
+      val c = 0.5519150244935105707435627
+      Spline(Seq(
+        Segment.Cubic(center + Dim(0, -radius), center + Dim(c * radius, -radius), center + Dim(radius, -c * radius), center + Dim(radius, 0)),
+        Segment.Cubic(center + Dim(radius, 0), center + Dim(radius, c * radius), center + Dim(c * radius, radius), center + Dim(0, radius)),
+        Segment.Cubic(center + Dim(0, radius), center + Dim(-c * radius, radius), center + Dim(-radius, c * radius), center + Dim(-radius, 0)),
+        Segment.Cubic(center + Dim(-radius, 0), center + Dim(-radius, -c * radius), center + Dim(-c * radius, -radius), center + Dim(0, -radius)
+      )))
+

@@ -56,6 +56,9 @@ private [raylib] object RaylibLib:
   val DrawCircleV = makeVoid[(Point, Float, Color)]("DrawCircleV")
   val DrawFPS = makeVoid[(Int, Int)]("DrawFPS")
 
+  val DrawTriangleFan = makeVoid[(MemorySegment, Int, Color)]("DrawTriangleFan")
+  val DrawTriangleStrip = makeVoid[(MemorySegment, Int, Color)]("DrawTriangleStrip")
+
   val DrawSplineLinear = makeVoid[(MemorySegment, Int, Float, Color)]("DrawSplineLinear")
 
   val DrawSplineSegmentLinear = makeVoid[(Point, Point, Float, Color)]("DrawSplineSegmentLinear")

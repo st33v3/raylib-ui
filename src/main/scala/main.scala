@@ -1,4 +1,5 @@
 
+import draw.{Style, Typeface}
 import geom.*
 import raylib.Color.*
 import raylib.{Color, KeyboardKey, Point, PointBuffer, Raylib, Rect, Size}
@@ -6,6 +7,22 @@ import raylib.{Color, KeyboardKey, Point, PointBuffer, Raylib, Rect, Size}
 val raylibInstance = new Raylib()
 
 import raylibInstance.*
+
+val starPoints =
+  import draw.Builder.*
+  val d = drawable(Style.default, Typeface.default):
+    star(Whit(200, 200), 60, 30, 7)
+  PointBuffer.fromWhits(d.asInstanceOf[draw.Poly].points)
+
+val starFanPoints =
+  val pb = PointBuffer(starPoints.size + 1)
+  val center = Point(200, 200)
+  pb += center
+  // counterclockwise order is required
+  starPoints.zipWithIndex.toList.reverse.foreach: (p, _) =>
+    pb += p
+  println(s"${center.str}, ${pb.size}")
+  pb
 
 def mapSegment(s: Segment): (Color, Float) => Unit =
   s match
@@ -95,6 +112,17 @@ def main(): Unit =
     if points.size > 0 then
       if isKeyDown(KeyboardKey.LEFT_CONTROL) then drawSplineLinear(points, 20, Color.SKYBLUE)
       drawSplineLinear(points, 2, Color.DARKBLUE)
+
+    val pb = PointBuffer(4)
+    pb += Point(200, 200)
+    pb += Point(200, 150)
+    pb += Point(150, 200)
+    pb += Point(200, 250)
+    drawTriangleFan(starFanPoints, Color.YELLOW)
+    drawSplineLinear(starPoints, 2, Color.BROWN)
+    starFanPoints.foreach: p =>
+      drawCircleV(p, 5, Color.RED)
+    //drawTriangleStrip(starPoints, Color.PINK)
 
     //val tr = Rect.fromCenter(Point(600, 300), catBad.size * ((frame % 60).toFloat / 60f))
     val scale = ((frame % 60).toFloat / 60f)

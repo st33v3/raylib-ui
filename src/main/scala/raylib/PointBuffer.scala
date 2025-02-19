@@ -1,5 +1,7 @@
 package raylib
 
+import geom.Whit
+
 import java.lang.foreign.{Arena, MemoryLayout, MemorySegment, ValueLayout}
 import java.util.NoSuchElementException
 import scala.annotation.targetName
@@ -47,7 +49,19 @@ class PointBuffer(private var _limit: Int) extends Iterable[Point]:
       index += 1
       value
 
+  def center: Point =
+    var x = 0f
+    var y = 0f
+    for point <- this do
+      x += point.x
+      y += point.y
+    Point(x / _size, y / _size)
+
   private[raylib] def pointer: MemorySegment = ptr
 
 object PointBuffer:
   private[raylib] val layout: ValueLayout.OfLong = ValueLayout.JAVA_LONG
+  def fromWhits(whits: Seq[Whit]): PointBuffer =
+    val buffer = PointBuffer(whits.size)
+    whits.foreach(buffer += Point.fromWhit(_))
+    buffer

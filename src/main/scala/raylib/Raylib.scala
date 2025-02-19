@@ -33,6 +33,9 @@ class Raylib:
     Rect.put(tmpRect1, rectangle)
     RaylibLib.DrawRectangleLinesEx.invokeExact(tmpRect1, thick, color)
 
+  def drawTriangleFan(points: PointBuffer, color: Color): Unit = RaylibLib.DrawTriangleFan.invokeExact(points.pointer, points.size, color)
+  def drawTriangleStrip(points: PointBuffer, color: Color): Unit = RaylibLib.DrawTriangleStrip.invokeExact(points.pointer, points.size, color)
+
   def drawLineStrip(points: PointBuffer, color: Color): Unit = RaylibLib.DrawLineStrip.invokeExact(points.pointer, points.size, color)
   def drawCircleV(center: Point, radius: Float, color: Color): Unit = RaylibLib.DrawCircleV.invokeExact(center, radius, color)
   def drawFPS(x: Int, y: Int): Unit = RaylibLib.DrawFPS.invokeExact(x, y)

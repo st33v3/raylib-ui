@@ -1,7 +1,9 @@
 package draw
 
-import geom.Box
+import geom.{Box, Dim}
 
-case class Rectangle(box: Box, style: Style) extends Drawable
+case class Rectangle(box: Box, style: Style) extends SimpleDrawable:
+  def move(x: Double, y: Double): Rectangle = copy(box = box.modify(Dim(x, y)))
+  def bounds: Box = box
 
 
