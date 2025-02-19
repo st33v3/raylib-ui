@@ -53,17 +53,17 @@ class Raylib:
   def isMouseButtonDown(button: Int): Boolean = RaylibLib.IsMouseButtonDown.invokeExact(button)
   def isMouseButtonReleased(button: Int): Boolean = RaylibLib.IsMouseButtonReleased.invokeExact(button)
   def isMouseButtonUp(button: Int): Boolean = RaylibLib.IsMouseButtonUp.invokeExact(button)
-  def getMouseX(): Int = RaylibLib.GetMouseX.invokeExact()
-  def getMouseY(): Int = RaylibLib.GetMouseY.invokeExact()
-  def getMousePosition(): Point = RaylibLib.GetMousePosition.invokeExact()
-  def getMouseDelta(): Point = RaylibLib.GetMouseDelta.invokeExact()
+  def getMouseX: Int = RaylibLib.GetMouseX.invokeExact()
+  def getMouseY: Int = RaylibLib.GetMouseY.invokeExact()
+  def getMousePosition: Point = RaylibLib.GetMousePosition.invokeExact()
+  def getMouseDelta: Point = RaylibLib.GetMouseDelta.invokeExact()
 
   def isKeyDown(key: KeyboardKey): Boolean = RaylibLib.IsKeyDown.invokeExact(key)
   def isKeyPressed(key: KeyboardKey): Boolean = RaylibLib.IsKeyPressed.invokeExact(key)
   def isKeyReleased(key: KeyboardKey): Boolean = RaylibLib.IsKeyReleased.invokeExact(key)
   def isKeyUp(key: KeyboardKey): Boolean = RaylibLib.IsKeyUp.invokeExact(key)
-  def getKeyPressed(): KeyboardKey = RaylibLib.GetKeyPressed.invokeExact()
-  def getCharPressed(): Int = RaylibLib.GetCharPressed.invokeExact()
+  def getKeyPressed: KeyboardKey = RaylibLib.GetKeyPressed.invokeExact()
+  def getCharPressed: Int = RaylibLib.GetCharPressed.invokeExact()
 
   val MOUSE_BUTTON_LEFT    = 0       // Mouse button left
   val MOUSE_BUTTON_RIGHT   = 1       // Mouse button right

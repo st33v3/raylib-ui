@@ -33,6 +33,6 @@ enum Dir(val dx: Int, val dy: Int):
   def step(s: Int): Dir = if this == CENTER then CENTER else Dir.arr((ordinal + s) % 8)
   
 object Dir:
-  val main = List(N, E, S, W)
-  val all = List(N, NE, E, SE, S, SW, W, NW)
+  val main: Seq[Dir] = List(N, E, S, W)
+  val all: Seq[Dir] = List(N, NE, E, SE, S, SW, W, NW)
   private val arr = all.toArray

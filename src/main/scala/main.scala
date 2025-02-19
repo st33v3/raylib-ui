@@ -8,13 +8,13 @@ val raylibInstance = new Raylib()
 
 import raylibInstance.*
 
-val starPoints =
+private val starPoints =
   import draw.Builder.*
   val d = drawable(Style.default, Typeface.default):
     star(Whit(200, 200), 60, 30, 7)
   PointBuffer.fromWhits(d.asInstanceOf[draw.Poly].points)
 
-val starFanPoints =
+private val starFanPoints =
   val pb = PointBuffer(starPoints.size + 1)
   val center = Point(200, 200)
   pb += center
@@ -70,8 +70,8 @@ def main(): Unit =
 
   while !windowShouldClose() do
     if isMouseButtonPressed(MOUSE_BUTTON_LEFT) then
-      x = getMouseX()
-      y = getMouseY()
+      x = getMouseX
+      y = getMouseY
 
     if isMouseButtonReleased(MOUSE_BUTTON_LEFT) then
       points.truncate(0)
@@ -79,7 +79,7 @@ def main(): Unit =
     beginDrawing()
     clearBackground(Color.RAYWHITE)
     drawText("Congrats! You created your first window!", 190, 400, 20, Color.BLACK)
-    val m = Whit(getMouseX(), getMouseY())
+    val m = Whit(getMouseX, getMouseY)
     val minDist = spline.segments.map(_.bounds.sdist(m)).min
     spline.segments.foreach: s =>
       val bbox = s.bounds
@@ -96,17 +96,17 @@ def main(): Unit =
     val r = screen.fromCenter(20, 20)
     drawRectangleV(r.start, r.size, Color.GOLD)
     if isMouseButtonDown(MOUSE_BUTTON_LEFT) then
-      val x1 = getMouseX()
-      val y1 = getMouseY()
+      val x1 = getMouseX
+      val y1 = getMouseY
       if isKeyDown(KeyboardKey.LEFT_SHIFT) then
         if points.size == points.limit then points.enlarge(points.limit * 2)
         if (x - x1).abs > 2 || (y - y1).abs > 2 then
           points += Point(x1, y1)
       else
-        val x1 = getMouseX() min x
-        val y1 = getMouseY() min y
-        val x2 = getMouseX() max x
-        val y2 = getMouseY() max y
+        val x1 = getMouseX min x
+        val y1 = getMouseY min y
+        val x2 = getMouseX max x
+        val y2 = getMouseY max y
         drawRectangle(x1, y1, x2 - x1, y2 - y1, Color.DARKGRAY.fade(0.3f))
 
     if points.size > 0 then

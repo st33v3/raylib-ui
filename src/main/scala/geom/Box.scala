@@ -24,7 +24,7 @@ case class Box(x: Double, y: Double, w: Double, h: Double):
     val dy = (p.y max y min (y + h)) - p.y
     dx * dx + dy * dy
 
-  def maxSdist(point: Whit) =
+  def maxSdist(point: Whit): Double =
     val dx = (point.x - x).abs max (point.x - (x + w)).abs
     val dy = (point.y - y).abs max (point.y - (y + h)).abs
     dx * dx + dy * dy
