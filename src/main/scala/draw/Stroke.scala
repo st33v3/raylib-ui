@@ -1,5 +1,8 @@
 package draw
 
+import zio.json.jsonDiscriminator
+
+@jsonDiscriminator("type")
 sealed trait Stroke:
   def lineWidth: Double
 

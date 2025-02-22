@@ -1,7 +1,9 @@
 package draw
 
 import geom.Dim
+import zio.json.jsonDiscriminator
 
+@jsonDiscriminator("type")
 sealed trait Brush
 
 case class NoBrush() extends Brush

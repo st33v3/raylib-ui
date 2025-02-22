@@ -16,6 +16,7 @@ trait Drawable:
     buffer.toSeq
 
 trait SimpleDrawable extends Drawable:
+  def style: Style
   def move(x: Double, y: Double): SimpleDrawable
   override private[draw] def collect(buffer: ListBuffer[SimpleDrawable], offsetX: Double, offsetY: Double): Unit =
     buffer += this.move(offsetX, offsetY)
