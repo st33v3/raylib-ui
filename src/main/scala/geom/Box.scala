@@ -39,13 +39,17 @@ case class Box(x: Double, y: Double, w: Double, h: Double):
     val y2 = (y + h) max (other.y + other.h)
     Box.fromCorners(x1, y1, x2, y2)
 
+  def include(p: Whit): Box =
+    if contains(p) then this
+    else union(Box(p.x, p.y, 0, 0))
+
   def coordinate(dir: Dir): Double =
-    dir.assertMain()
     dir match
       case Dir.N => top
       case Dir.E => right
       case Dir.S => bottom
       case Dir.W => left
+      case _ => throw IllegalArgumentException(s"Not a main direction: $dir")
 
   def point(dir: Dir): Whit =
     import Dir.*

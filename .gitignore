@@ -46,3 +46,4 @@ build/
 ### Scala ###
 .bsp/
 /raylib/
+/node_modules/

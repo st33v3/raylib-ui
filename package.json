@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "scripts": {
+    "svg": "tsx src/main/typescript/svgconvert.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "tsx": "^4.19.2"
+  }
+}

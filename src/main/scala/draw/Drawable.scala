@@ -17,5 +17,5 @@ trait Drawable:
 
 trait SimpleDrawable extends Drawable:
   def move(x: Double, y: Double): SimpleDrawable
-  override protected def collect(buffer: ListBuffer[SimpleDrawable], offsetX: Double, offsetY: Double): Unit =
+  override private[draw] def collect(buffer: ListBuffer[SimpleDrawable], offsetX: Double, offsetY: Double): Unit =
     buffer += this.move(offsetX, offsetY)

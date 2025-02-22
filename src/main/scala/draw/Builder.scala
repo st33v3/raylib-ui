@@ -4,7 +4,7 @@ import geom.{Box, Dim, Matrix, Segment, Spline, Whit}
 
 import scala.collection.mutable.ListBuffer
 
-class Builder[L](private var style: Style, private var typeface: Typeface):
+class Builder[L](private var style: Style, private var typeface: Typeface, val metrics: TextMetrics):
   private val buffer = ListBuffer.empty[(Drawable, Option[L])]
 
   def getStyle: Style = style
@@ -25,7 +25,7 @@ class Builder[L](private var style: Style, private var typeface: Typeface):
     else throw IllegalArgumentException(s"Drawable not found: $drawable")
 
   def duplicate[L2](): Builder[L2] =
-    new Builder[L2](style, typeface)
+    new Builder[L2](style, typeface, metrics)
 
 
 
@@ -33,8 +33,8 @@ class Builder[L](private var style: Style, private var typeface: Typeface):
 type BuilderBody[L] = Builder[L] ?=> Unit
 
 object Builder:
-  def drawable(style: Style, typeface: Typeface)(build: BuilderBody[Nothing]): Drawable =
-    val bld = new Builder(style, typeface)
+  def drawable(style: Style, typeface: Typeface, metrics: TextMetrics)(build: BuilderBody[Nothing]): Group =
+    val bld = new Builder(style, typeface, metrics)
     build(using bld)
     Group(bld.result().map(_._1))
 
@@ -77,7 +77,8 @@ object Builder:
     poly(points)
 
   def text[L](text: String, pos: Whit)(using bld: Builder[L]): Drawable =
-    bld.add(Stamp(text, pos, bld.getStyle, bld.getTypeface))
+    val bounds = Box(pos, bld.metrics.measure(bld.getTypeface, text))
+    bld.add(Stamp(text, pos, bounds, bld.getStyle, bld.getTypeface))
 
   private def center(p: (Drawable, Option[Dim])): Whit = p._1.bounds.center + p._2.getOrElse(Dim.zero)
 
@@ -97,10 +98,13 @@ object Builder:
       bld.attribute(d, layout)
 
 object test:
-  def hu(): Unit = {
+  def hu(): Unit =
     import Builder.*
     import PathBuilder.*
-    val d = drawable(Style.default, Typeface.default) {
+    object FakeMetrics extends TextMetrics:
+      def measure(typeface: Typeface, text: String): Dim = Dim(10, 10)
+
+    val d = drawable(Style.default, Typeface.default, FakeMetrics):
       rectangle(Box(Whit(0, 0), Dim(100, 100)))
       path(Whit(0, 0)) {
         moveTo(Whit(10, 10))
@@ -112,5 +116,3 @@ object test:
       stack():
         rectangle(Box(Whit(0, 0), Dim(10, 10))) @@ Dim(5, 5)
         rectangle(Box(Whit(10, 10), Dim(10, 10)))
-    }
-  }

@@ -1,5 +1,5 @@
 
-import draw.{Style, Typeface}
+import draw.{Style, TextMetrics, Typeface}
 import geom.*
 import raylib.Color.*
 import raylib.{Color, KeyboardKey, Point, PointBuffer, Raylib, Rect, Size}
@@ -10,9 +10,11 @@ import raylibInstance.*
 
 private val starPoints =
   import draw.Builder.*
-  val d = drawable(Style.default, Typeface.default):
+  object fake extends TextMetrics:
+    def measure(typeface: Typeface, text: String): Dim = Dim(10, 10)
+  val d = drawable(Style.default, Typeface.default, fake):
     star(Whit(200, 200), 60, 30, 7)
-  PointBuffer.fromWhits(d.asInstanceOf[draw.Poly].points)
+  PointBuffer.fromWhits(d.collect().head.asInstanceOf[draw.Poly].points)
 
 private val starFanPoints =
   val pb = PointBuffer(starPoints.size + 1)
@@ -125,7 +127,7 @@ def main(): Unit =
     //drawTriangleStrip(starPoints, Color.PINK)
 
     //val tr = Rect.fromCenter(Point(600, 300), catBad.size * ((frame % 60).toFloat / 60f))
-    val scale = ((frame % 60).toFloat / 60f)
+    val scale = (frame % 60).toFloat / 60f
     val tr = Rect(Point(600, 300), catBad.size * scale)
     //val tr = Rect.fromCenter(Point(600, 300), catBad.size)
     val angle = true match
