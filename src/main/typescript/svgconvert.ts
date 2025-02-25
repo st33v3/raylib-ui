@@ -19,8 +19,9 @@ process.stdin.on('end', () => {
 function convert(json: IBatch) {
     console.log("CONVERT");
     console.log(json);
-    const dom = new JSDOM("<!DOCTYPE html><html><body><svg xmlns='http://www.w3.org/2000/svg'></svg></body></html>");
+    const dom = new JSDOM("<!DOCTYPE html><html><body><svg xmlns='http://www.w3.org/2000/svg'><defs></defs></svg></body></html>");
     const svg = dom.window.document.querySelector("svg");
+    const defs = svg.querySelector("defs");
     const doc = dom.window.document;
     const svgns = "http://www.w3.org/2000/svg" as const;
     var circle = doc.createElementNS(svgns, 'circle');

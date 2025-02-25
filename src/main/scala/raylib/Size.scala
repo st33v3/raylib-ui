@@ -15,7 +15,9 @@ object Size:
   def fromDim(d: Dim): Size = Size(d.w.toFloat, d.h.toFloat)
 
   val layout = ValueLayout.JAVA_LONG
-  def put(ptr: MemorySegment, size: Size, offset: Long): Unit = ptr.set(layout, offset, size)
+  def put(ptr: MemorySegment, offset: Long, size: Size): Long = 
+    ptr.set(layout, offset, size)
+    offset + layout.byteSize
 
   extension (p: Size)
     def w: Float = java.lang.Float.intBitsToFloat(p.toInt)

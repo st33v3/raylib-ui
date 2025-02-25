@@ -31,6 +31,8 @@ object Rect:
   def fromCenter(center: Point, size: Size): Rect = Rect(center - size / 2, size)
 
   val layout = MemoryLayout.structLayout(Point.layout, Size.layout)
-  def put(ptr: MemorySegment, rect: Rect): Unit =
-    Point.put(ptr, rect.start, 0)
-    Size.put(ptr, rect.size, 8)
+  def put(ptr: MemorySegment, offset0: Long, rect: Rect): Long =
+    var offset = offset0
+    offset = Point.put(ptr, offset, rect.start)
+    offset = Size.put(ptr, offset, rect.size)
+    offset

@@ -25,6 +25,8 @@ private [raylib] object RaylibLib:
       case _: MemorySegment => ValueLayout.ADDRESS :: layout[ts]
       case _: String => ValueLayout.ADDRESS :: layout[ts]
       case _: Texture2D => Texture2D.layout :: layout[ts]
+      case _: Camera3D => Camera3D.layout :: layout[ts]
+      case _: Point3 => Point3.layout :: layout[ts]
       case _: Color => ValueLayout.JAVA_INT :: layout[ts]
       case _: Point => ValueLayout.JAVA_LONG :: layout[ts]
       case _: Size => ValueLayout.JAVA_LONG :: layout[ts]
@@ -92,3 +94,10 @@ private [raylib] object RaylibLib:
   val LoadTexture = make[(Texture2D, String)]("LoadTexture")
   val DrawTextureEx = makeVoid[(Texture2D, Point, Float, Float, Color)]("DrawTextureEx")
   val DrawTexturePro = makeVoid[(Texture2D, Rect, Rect, Point, Float, Color)]("DrawTexturePro")
+
+  val BeginMode3D = makeVoid[Tuple1[Camera3D]]("BeginMode3D")
+  val EndMode3D = makeVoid[EmptyTuple]("EndMode3D")
+  val DrawCube = makeVoid[(Point3, Float, Float, Float, Color)]("DrawCube")
+  val DrawCubeV = makeVoid[(Point3, Point3, Color)]("DrawCubeV")
+  val DrawCubeWires = makeVoid[(Point3, Float, Float, Float, Color)]("DrawCubeWires")
+  val DrawCubeWiresV = makeVoid[(Point3, Point3, Color)]("DrawCubeWiresV")

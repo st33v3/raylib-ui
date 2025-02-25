@@ -8,7 +8,8 @@ import scala.annotation.targetName
 
 class PointBuffer(private var _limit: Int) extends Iterable[Point]:
   private var layout = MemoryLayout.sequenceLayout(limit, PointBuffer.layout)
-  private var ptr = Arena.ofAuto().allocate(layout)
+  private var arena = Arena.ofAuto()
+  private var ptr = arena.allocate(layout)
   private var _size = 0
   
   def apply(index: Int): Point =
@@ -24,13 +25,15 @@ class PointBuffer(private var _limit: Int) extends Iterable[Point]:
   def +=(value: Point): Unit = update(_size, value)
 
   def enlarge(newSize: Int): Unit =
-    val newLayout = MemoryLayout.sequenceLayout(newSize, PointBuffer.layout)  
-    val newPtr = Arena.ofAuto().allocate(newLayout)
+    val newLayout = MemoryLayout.sequenceLayout(newSize, PointBuffer.layout)
+    val newArena = Arena.ofAuto()
+    val newPtr = newArena.allocate(newLayout)
     MemorySegment.copy(ptr, 0, newPtr, 0, (_size min newSize) * PointBuffer.layout.byteSize)
     ptr = newPtr
     _limit = newSize
     _size = newSize min _size
     layout = newLayout
+    arena = newArena
 
   def truncate(newSize: Int): Unit =
     if newSize < 0 || newSize > _size then throw IndexOutOfBoundsException(s"Size $newSize out of bounds")

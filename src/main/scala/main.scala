@@ -1,8 +1,9 @@
 
+
 import draw.{Style, TextMetrics, Typeface}
 import geom.*
 import raylib.Color.*
-import raylib.{Color, KeyboardKey, Point, PointBuffer, Raylib, Rect, Size}
+import raylib.{Camera3D, CameraType, Color, KeyboardKey, MouseButton, Point, Point3, PointBuffer, Raylib, RaylibFlag, Rect, Size}
 
 val raylibInstance = new Raylib()
 
@@ -58,7 +59,7 @@ def main(): Unit =
   val segments = spline.segments.map(mapSegment)
   val screen = Rect(0f, 0f, 800f, 480f)
   setTargetFPS(30)
-  setConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_HIGHDPI | FLAG_VSYNC_HINT)
+  setConfigFlags(RaylibFlag.FLAG_MSAA_4X_HINT | RaylibFlag.FLAG_WINDOW_HIGHDPI | RaylibFlag.FLAG_VSYNC_HINT)
   initWindow(screen.w.toInt, screen.h.toInt, "raylib [core] example - basic window")
   val catBad = loadTexture(".\\cat-bad.png")
   println(catBad)
@@ -71,11 +72,11 @@ def main(): Unit =
   var frame = 0
 
   while !windowShouldClose() do
-    if isMouseButtonPressed(MOUSE_BUTTON_LEFT) then
+    if isMouseButtonPressed(MouseButton.MOUSE_BUTTON_LEFT) then
       x = getMouseX
       y = getMouseY
 
-    if isMouseButtonReleased(MOUSE_BUTTON_LEFT) then
+    if isMouseButtonReleased(MouseButton.MOUSE_BUTTON_LEFT) then
       points.truncate(0)
 
     beginDrawing()
@@ -97,7 +98,7 @@ def main(): Unit =
 
     val r = screen.fromCenter(20, 20)
     drawRectangleV(r.start, r.size, Color.GOLD)
-    if isMouseButtonDown(MOUSE_BUTTON_LEFT) then
+    if isMouseButtonDown(MouseButton.MOUSE_BUTTON_LEFT) then
       val x1 = getMouseX
       val y1 = getMouseY
       if isKeyDown(KeyboardKey.LEFT_SHIFT) then
@@ -140,7 +141,48 @@ def main(): Unit =
     //drawRectangleLinesEx(tr, 2, Color.RED)
     drawFPS(screen.end.x.toInt - 100, screen.end.y.toInt - 20)
 
+    val camera = Camera3D(Point3(10, 10, 10), Point3(0, 0, 0), Point3((frame % 180) / 60.0f, 1, 0), 45, CameraType.CAMERA_PERSPECTIVE)
+    beginMode3D(camera)
+    drawCubeWires(Point3(0, 0, 0), 4, 4, 4, Color.RED)
+    endMode3D()
+
     if !isKeyDown(KeyboardKey.SPACE) then frame += 1
     endDrawing()
 
   closeWindow()
+
+def raylibRotateCube(): Unit = ()
+//  //create a window and position 3D cube in the center
+//  // animate the cube to rotate around the axis
+//  val screen = Rect(0f, 0f, 800f, 480f)
+//  setConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_HIGHDPI | FLAG_VSYNC_HINT)
+//  initWindow(screen.w.toInt, screen.h.toInt, "raylib [core] example - 3d camera first person")
+//  setTargetFPS(60)
+//  // Define the camera to look into our 3d world
+//  val camera = Camera(
+//    position = Point(10.0f, 10.0f, 10.0f),
+//    target = Point(0.0f, 0.0f, 0.0f),
+//    up = Point(0.0f, 1.0f, 0.0f),
+//    fovy = 45.0f,
+//    `type` = CameraType.CAMERA_PERSPECTIVE
+//  )
+//  val cubePosition = Point(0.0f, 0.0f, 0.0f)
+//  val cubeSize = 2.0f
+//  val cubeColor = Color.RED
+//  while !windowShouldClose() do
+//    // Update
+//    // Rotate the cube
+//    cubePosition.x = 0.0f
+//    cubePosition.y = 0.0f
+//    cubePosition.z = 0.0f
+//    // Draw
+//    beginDrawing()
+//    clearBackground(Color.RAYWHITE)
+//    beginMode3D(camera)
+//    drawCube(cubePosition, cubeSize, cubeSize, cubeSize, cubeColor)
+//    drawCubeWires(cubePosition, cubeSize, cubeSize, cubeSize, Color.MAROON)
+//    drawGrid(10, 1.0f)
+//    endMode3D()
+//    drawText("Welcome to the third dimension!", 10, 40, 20, Color.DARKGRAY)
+//    drawFPS(10, 10)
+//    endDrawing()

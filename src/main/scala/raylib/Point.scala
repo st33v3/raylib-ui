@@ -4,7 +4,7 @@ import geom.Whit
 
 import java.lang.foreign.{MemorySegment, ValueLayout}
 import scala.annotation.targetName
-
+import raylib.{=~= => approx}
 opaque type Point = Long
 
 object Point:
@@ -14,7 +14,9 @@ object Point:
   def fromWhit(w: Whit): Point = Point(w.x.toFloat, w.y.toFloat)
 
   val layout = ValueLayout.JAVA_LONG
-  def put(ptr: MemorySegment, point: Point, offset: Long): Unit = ptr.set(layout, offset, point)
+  def put(ptr: MemorySegment, offset: Long, point: Point): Long = 
+    ptr.set(layout, offset, point)
+    offset + layout.byteSize
 
   extension (p: Point)
     def x: Float = java.lang.Float.intBitsToFloat(p.toInt)
@@ -27,6 +29,6 @@ object Point:
     def --(point: Point): Size = Size(x - point.x, y - point.y)
     def str = s"(${p.x}, ${p.y})"
     def sdist(other: Point): Float = (x - other.x) * (x - other.x) + (y - other.y) * (y - other.y)
-
+    def =~=(other: Point, epsilon: Float): Boolean = (x `approx` other.x) && (y `approx` other.y)
     private[raylib] def toLong: Long = p
 
