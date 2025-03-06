@@ -4,9 +4,8 @@ import draw.{Drawable, Path, Rectangle, Style}
 import geom.{Box, Segment, Spline}
 import ui.{Scene, Widget, WidgetId}
 
-class BoxWidget(id: WidgetId) extends Widget(id) with Widget2d:
+class BoxWidget(id: WidgetId) extends Widget(id) with Widget2D:
   def draw()(using Scene): Drawable =
-    val p = pos.eval
-    val s = size.eval
-    Rectangle(Box(p, s), Style.default)
+    val box = this.bounds()
+    Rectangle(box, Style.default)
   override def toString: String = s"BoxWidget($id)"
