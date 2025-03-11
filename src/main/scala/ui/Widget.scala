@@ -3,24 +3,26 @@ package ui
 import draw.Drawable
 
 abstract class Widget(val id: WidgetId):
-  val children: Signal[Map[String, Widget]] = new Signal[Map[String, Widget]](this, "children")
+  private val childrenSetter = new SignalSetter[Map[String, Widget]](this, "children")
+  val children: Signal[Map[String, Widget]] = childrenSetter.signal
 
-  protected def createChild[W <: Widget](id: String, factory: WidgetFactory[W])(init: Widget => State[Unit]): State[W] =
+  def parent: Widget
+
+  protected def createChild[W <: Widget](name: String, factory: WidgetFactory[W]): State[W] =
     for
       children <- this.children.get
-      childOpt = children.get(id).flatMap(c => factory.typecast(c))
+      childOpt = children.get(name).flatMap(c => factory.typecast(c))
       child <- childOpt match
-        case Some(c) => init(c).map(_ => c)
-        case None =>
-          for
-            nc <- factory.create(this, id)
-            _ <- init(nc)
-          yield nc
+        case Some(c) => State.pure(c)
+        case None => factory.create(this, name)
+      _ <- childrenSetter.set(children.updated(name, child))
     yield child
 
   def draw()(using Scene): Drawable
 
-  def update(): State[Unit] = State.pure(())
+  protected def updateChildren(): State[Unit] = State.pure(())
+
+  def update(): State[Unit] = Scene.suspendSignal(childrenSetter)(updateChildren())
 
   protected def init(): State[Unit] = State.pure(())
 
@@ -29,3 +31,4 @@ abstract class Widget(val id: WidgetId):
 
 object Widget:
   private[ui] def callInit(w: Widget): State[Unit] = w.init()
+

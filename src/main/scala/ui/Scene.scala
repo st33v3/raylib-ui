@@ -2,77 +2,115 @@ package ui
 
 case class SigVal[T](value: T, codec: SceneCodec[T], update: Option[State[T]] = None)
 
-opaque type State[A] = (Scene) => (Scene, A)
-
-object State:
-  def apply[A](fn: Scene => (Scene, A)): State[A] = s => fn(s)
-  def pure[A](a: A): State[A] = (s: Scene) => (s, a)
-  def scene: State[Scene] = (s: Scene) => (s, s)
-  def use[A](fn: Scene => A): State[A] = s => (s, fn(s))
-  
-  extension [A](fa: State[A])
-    def map[B](f: A => B): State[B] = (s: Scene) =>
-      val (s1, a) = fa(s)
-      (s1, f(a))
-    def flatMap[B](f: A => State[B]): State[B] = (s: Scene) =>
-      val (s1, a) = fa(s)
-      f(a)(s1)
-    def mapScene[B](f: Scene ?=> A => B): State[B] = (s: Scene) =>
-      val (s1, a) = fa(s)
-      given Scene = s1
-      (s1, f(a))
-    def run(s: Scene): (Scene, A) = fa(s)
-
-  extension (fa: State[Boolean])
-    def when[T](tb: => State[T], eb: => State[T]): State[T] = scene =>
-      val (s2, b) = fa(scene)
-      if b then tb(s2)
-      else eb(s2)
-
 case class Scene(
-       data: Map[SignalValue[?], SigVal[?]],
-       signals: Map[SignalValue[?], Set[Signal[?]]],
-       recording: Option[Signal[?]] = None,
+       data: Map[SignalSetter[?], SigVal[?]],
+       signalsDeps: Map[SignalSetter[?], Set[Widget]],  //List of widgets triggered by each signal
+       widgetDeps: Map[Widget, Set[SignalSetter[?]]],  //List of signals that each widget depends on
+       widgetSignals: Map[Widget, Set[SignalSetter[?]]], //List of known signals for each widget
+       dirtyWidgets: Set[Widget] = Set.empty,
+       recording: Option[Widget] = None,
+       suspended: Set[SignalSetter[?]] = Set.empty,
 ):
-  def getData[T](signal: SignalValue[T]): T = data(signal).value.asInstanceOf[T]
+  def getData[T](signal: SignalSetter[T]): T = data(signal).value.asInstanceOf[T]
 
-  protected def addSignalDep(signal: Signal[?], dep: Signal[?]): Scene =
-    copy(signals = signals + (signal -> (signals.getOrElse(signal, Set.empty) + dep)))
+  def getDataOpt[T](signal: SignalSetter[T]): Option[T] = data.get(signal).map(_.value.asInstanceOf[T])
 
-  def getAndRegister[T](signal: Signal[T]): (Scene, T) =
+  protected def removeWidget(w: Widget): Scene =
+    //remove signals owned by widget and trigger its dependencies
+    //remove widget from signal dependencies
+    var dw = dirtyWidgets
+    var wd = widgetDeps
+    var sd = signalsDeps
+    var ws = widgetSignals
+    var d = data
+
+    ws.getOrElse(w, Set.empty).foreach: s =>
+      d -= s
+      val deps = sd.getOrElse(s, Set.empty)
+      dw ++= deps
+      sd -= s
+
+    wd.getOrElse(w, Set.empty).foreach: s =>
+      sd = sd.updatedWith(s)(_.map(_ - w).filter(_.nonEmpty))
+
+    ws = ws - w
+    wd = wd - w
+    dw -= w
+    copy(data = d, signalsDeps = sd, widgetDeps = wd, widgetSignals = ws, dirtyWidgets = dw)
+
+  /**
+   * Inform the scene that particular widget depends on particular signal. I.e. if
+   * the signal changes in the future, the widget should be updated.
+    * @param widget
+   * @param signal
+   */
+  protected def addSignalDep(widget: Widget, signal: SignalSetter[?]): Scene =
+    copy(
+      signalsDeps = signalsDeps.updatedWith(signal)(_.orElse(Some(Set.empty[Widget])).map(_ + widget)),
+      widgetDeps = widgetDeps.updatedWith(widget)(_.orElse(Some(Set.empty[SignalSetter[?]])).map(_ + signal)),
+    )
+
+  def getAndRegister[T](signal: SignalSetter[T]): (Scene, T) =
     val ret = getData(signal)
     if recording.isDefined then addSignalDep(recording.get, signal) -> ret
     else this -> ret
 
-  protected def updateDep[T](signal: Signal[T]): Scene =
-    val sv = data(signal).asInstanceOf[SigVal[T]]
-    if sv.update.isDefined then
-      recordSignal[T](signal, sv.update.get)
-    else this
+  def getAndRegisterOpt[T](signal: SignalSetter[T]): (Scene, Option[T]) =
+    val ret = getDataOpt(signal)
+    if recording.isDefined then addSignalDep(recording.get, signal) -> ret
+    else this -> ret
 
-  def setData[T, U <: T](signal: Signal[T], value: U, codec: SceneCodec[U]): Scene =
-    if recording.isDefined then throw Exception("Cannot setData while recording another signal")
-    //TODO remove this signal from all dependencies and split this method to setData and triggerDeps (used by setData and recordSignal)
-    var scene = copy(data = data + (signal -> SigVal(value, codec)))
-    val deps = scene.signals.getOrElse(signal, Set.empty).iterator
-    while deps.hasNext do
-      val dep = deps.next()
-      scene = scene.updateDep(dep)
-    scene
+  def setData[T, U <: T](signal: SignalSetter[T], value: U, codec: SceneCodec[U]): Scene =
+    val d = data + (signal -> SigVal(value, codec))
+    var sd = signalsDeps
+    var wd = widgetDeps
+    val ws = widgetSignals.updatedWith(signal.owner)(_.orElse(Some(Set.empty)).map(_ + signal))
+    val dw = if suspended.contains(signal) then dirtyWidgets else dirtyWidgets ++ sd.getOrElse(signal, Set.empty)
+    if recording.isDefined then
+      val w = recording.get
+      sd = sd.updatedWith(signal)(_.orElse(Some(Set.empty)).map(_ + w))
+      wd = wd.updatedWith(w)(_.orElse(Some(Set.empty)).map(_ + signal))
+    copy(data = d, dirtyWidgets = dw, signalsDeps = sd, widgetDeps = wd, widgetSignals = ws)
 
-  def recordSignal[T](signal: Signal[T], update: State[T]): Scene =
-    if recording.isDefined then throw Exception("Cannot record another signal while recording a signal")
-    var scene = copy(recording = Some(signal), signals = signals - signal)
-    val (sc, value) = update.run(scene)
-    scene = sc
-    val sv = scene.data(signal).asInstanceOf[SigVal[T]]
-    scene = scene.copy(data = scene.data + (signal -> sv.copy(update = Some(update), value = value)), recording = None)
-    if value != sv.value then
-      scene.setData(signal, value, sv.codec)
-    else scene
+  def recordDependencies(widget: Widget): Scene =
+    if recording.isDefined then throw Exception("Cannot record start recording when already started")
+    val sigs = widgetDeps.getOrElse(widget, Set.empty)
+    val wd = widgetDeps - widget
+    var sd = signalsDeps
+    sigs.foreach: s =>
+      sd = sd.updatedWith(s)(_.map(_ - widget).filter(_.nonEmpty))
+    copy(recording = Some(widget), widgetDeps = wd, signalsDeps = sd)
+
+  def stopRecording(): Scene =
+    if recording.isEmpty then throw Exception("Cannot stop recording when not recording")
+    copy(recording = None)
 
 object Scene:
 
-  def getData[T](signal: Signal[T]): State[T] = State(s => s.getAndRegister(signal))
-  def setData[T, U <: T](signal: Signal[T], value: U, codec: SceneCodec[U]): State[T] = State(s => (s.setData(signal, value, codec), value))
-  def initSignal[T](signal: Signal[T], update: State[T]): State[T] = State(s => (s.recordSignal(signal, update), ())).flatMap(_ => getData(signal))
+  def getData[T](signal: SignalSetter[T]): State[T] = State(s => s.getAndRegister(signal))
+  def getDataOpt[T](signal: SignalSetter[T]): State[Option[T]] = State(s => s.getAndRegisterOpt(signal))
+  def setData[T, U <: T](signal: SignalSetter[T], value: U, codec: SceneCodec[U]): State[T] = State(s => (s.setData(signal, value, codec), value))
+  /**
+   * Temporarily prevents signal to report changes to its dependencies, run provided state changes and restores
+   * signal ability to notify its dependencies. When signal changes during state processing, it will trigger its dependencies.
+   * @param signal then signal to suspend
+   * @return current value of the signal
+   */
+  def suspendSignal[A](signal: SignalSetter[A])(state: State[Any]): State[Unit] =
+    for
+      prev <- State.derive(s => s.copy(suspended = s.suspended + signal), s => s.getData(signal))
+      _ <- state
+      _ <- State.derive: s =>
+        val s1 = s.copy(suspended = s.suspended - signal)
+        val sv = s.data(signal).asInstanceOf[SigVal[A]]
+        if sv.value != prev then
+          s1.setData(signal, prev, SceneCodec.transient).setData(signal, sv.value, sv.codec)
+        else s1
+    yield ()
+
+  def recordDependencies(widget: Widget)(state: State[Any]): State[Unit] =
+    for
+      _ <- State.derive(s => s.recordDependencies(widget))
+      _ <- state
+      _ <- State.derive(s => s.stopRecording())
+    yield ()
