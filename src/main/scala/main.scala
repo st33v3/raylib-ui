@@ -13,7 +13,7 @@ private val starPoints =
   import draw.Builder.*
   object fake extends TextMetrics:
     def measure(typeface: Typeface, text: String): Dim = Dim(10, 10)
-  val d = drawable(Style.default, Typeface.default, fake):
+  val d = drawable("", Style.default, Typeface.default, fake):
     star(Whit(200, 200), 60, 30, 7)
   PointBuffer.fromWhits(d.collect().head.asInstanceOf[draw.Poly].points)
 

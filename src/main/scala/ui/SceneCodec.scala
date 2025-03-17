@@ -16,7 +16,7 @@ object SceneCodec:
     def encode(value: T, ctx: EncodingContext): (EncodingContext, String) = (ctx, "")
     def decode(value: String, ctx: DecodingContext): T = throw new UnsupportedOperationException("Volatile value cannot be decoded")
 
-  given SceneCodec[Widget] = transient
+  given SceneCodec[WidgetBase] = transient
   given SceneCodec[WidgetFactory[?]] = transient
   given SceneCodec[Unit] = transient
   given [A: SceneCodec] => SceneCodec[Map[String, A]] = transient

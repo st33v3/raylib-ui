@@ -6,6 +6,7 @@ import geom.{Box, Dim}
 import scala.collection.mutable.ListBuffer
 
 trait Drawable:
+  val id: String
   def move(dim: Dim): Drawable = move(dim.w, dim.h)
   def move(x: Double, y: Double): Drawable
   def bounds: Box

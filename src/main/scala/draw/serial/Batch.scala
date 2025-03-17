@@ -12,11 +12,11 @@ object Batch:
   protected def convert(drawing: SimpleDrawable, bld: BatchBuilder): Unit =
     extension (style: Style) def clp: Option[Box] = if style.clip == Box.infinite then None else Some(style.clip)
     val data = drawing match
-      case Rectangle(box, style) =>
+      case Rectangle(id, box, style) =>
         RectData(bld.strokeId(style.stroke), bld.brushId(style.brush), style.clp, box.x, box.y, box.w, box.h)
-      case Poly(points, style) =>
+      case Poly(id, points, style) =>
         PolyData(bld.strokeId(style.stroke), bld.brushId(style.brush), style.clp, points.map(p => (p.x, p.y)))
-      case Path(spline, style) =>
+      case Path(id, spline, style) =>
         PathData(bld.strokeId(style.stroke), bld.brushId(style.brush), style.clp, spline.segments.map(SegmentData.convert))
     bld.add(data)
 

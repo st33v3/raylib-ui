@@ -13,7 +13,7 @@ object SerTest:
 
     import Builder.*
     import PathBuilder.*
-    val d = Builder.drawable(Style.default, Typeface.default, fake):
+    val d = Builder.drawable("", Style.default, Typeface.default, fake):
       rectangle(Box(10.0, 10.0, 100.0, 100.0))
 
     println("Hello, world!")

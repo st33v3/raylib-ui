@@ -1,7 +1,7 @@
 package ui
 
-abstract class WidgetFactory[W <: Widget]:
-  def typecast(widget: Widget): Option[W]
+abstract class WidgetFactory[W <: WidgetBase]:
+  def typecast(widget: WidgetBase): Option[W]
 
   /**
    * Creates a new widget with the given parent and id. If the instance needs additional initialization (signals, ...)
@@ -10,8 +10,8 @@ abstract class WidgetFactory[W <: Widget]:
    * @param id
    * @return fully initialized widget
    */
-  def create(parent: Widget, id: String): State[W] =
+  def create(parent: WidgetBase, id: String): SceneState[W] =
     val widget = instantiate(parent, id)
-    Widget.callInit(widget).map(_ => widget)
+    WidgetBase.callInit(widget).map(_ => widget)
 
-  protected def instantiate(parent: Widget, id: String): W
+  protected def instantiate(parent: WidgetBase, id: String): W

@@ -1,72 +1,92 @@
 package ui
 
-opaque type State[+A] = Scene => (Scene, A)
+import scala.annotation.tailrec
+
+// https://medium.com/%40olxc/trampolining-and-stack-safety-in-scala-d8e86474ddfa
+// https://days2012.scala-lang.org/sites/days2012/files/bjarnason_trampolines.pdf
+
+opaque type State[S, +A] = S => Trampoline[S, A]
+
+sealed trait Trampoline[S, +A]:
+  def next(): Trampoline[S, A]
+
+trait TrampolineResult[S, +A] extends Trampoline[S, A]:
+  def value: A
+  def state: S
+
+trait TrampolineOps[S, A]:
+  private[TrampolineOps] def thenFlatMap[C](fm: A => State[S, C]): Trampoline[S, C]
+  private[TrampolineOps] def thenFold[C](seq: Seq[C], fold: (A, C) => State[S, A]): Trampoline[S, A]
+
+object TrampolineOps:
+  case class Done[S, A](state: S, value: A) extends Trampoline[S, A] with TrampolineOps[S, A] with TrampolineResult[S, A]:
+    def next(): Trampoline[S, A] = this
+    private[TrampolineOps] override def thenFlatMap[C](fm: A => State[S, C]): Trampoline[S, C] =
+      fm(value).applyState(state)
+    private[TrampolineOps] override def thenFold[C](seq: Seq[C], fold: (A, C) => State[S, A]): Trampoline[S, A] =
+      State.fold(seq, value)(fold).applyState(state)
+
+  case class FlatMap[S, B, A](state: S, sub: State[S, B], fn: B => State[S, A]) extends Trampoline[S, A] with TrampolineOps[S, A]:
+
+    override def next(): Trampoline[S, A] =
+      val s = sub.applyState(state).asInstanceOf[TrampolineOps[S, B]]
+      s.thenFlatMap(fn)
+
+    private[TrampolineOps] override def thenFlatMap[C](fm: A => State[S, C]): Trampoline[S, C] =
+      FlatMap(state, sub, a => State(s => FlatMap(s, fn(a), fm)))
+
+    private[TrampolineOps] override def thenFold[C](seq: Seq[C], fold: (A, C) => State[S, A]): Trampoline[S, A] =
+      thenFlatMap(b => State.fold(seq, b)(fold))
+
+  case class Fold[S, B, A](state: S, seq: Seq[B], acc: A, fn: (A, B) => State[S, A]) extends Trampoline[S, A] with TrampolineOps[S, A]:
+    private def step(state: S): Trampoline[S, A] =
+      if seq.isEmpty then Done(state, acc)
+      else
+        val a = seq.head
+        fn(acc, a).applyState(state).asInstanceOf[TrampolineOps[S, A]].thenFold(seq.tail, fn)
+
+    override def next(): Trampoline[S, A] = step(state)
+
+    private[TrampolineOps] override def thenFlatMap[C](fm: A => State[S, C]): Trampoline[S, C] =
+      FlatMap(state, State(s => this.step(s)), fm)
+
+    private[TrampolineOps] override def thenFold[C](seq: Seq[C], fold: (A, C) => State[S, A]): Trampoline[S, A] =
+      thenFlatMap(b => State.fold(seq, b)(fold))
+
+import TrampolineOps.*
+
+object Trampoline:
+
+  def result[S, A](state: S, value: A): TrampolineResult[S, A] = Done(state, value)
+
+  @tailrec
+  def run[S, A](t: Trampoline[S, A]): TrampolineResult[S, A] =
+    t match
+      case d @ Done(_,_) => d
+      case _ => run(t.next())
 
 object State:
-  def apply[A](fn: Scene => (Scene, A)): State[A] = s => fn(s)
-  def pure[A](a: A): State[A] = (s: Scene) => (s, a)
-  def scene: State[Scene] = (s: Scene) => (s, s)
-  def use[A](fn: Scene => A): State[A] = s => (s, fn(s))
-  def derive(fn: Scene => Scene): State[Unit] = scene =>
-    val s1 = fn(scene)
-    (s1, ())
+  def pure[S, A](a: A): State[S, A] = s => Done(s, a)
+  def apply[S, A](fa: S => Trampoline[S, A]): State[S, A] = fa
+  def fold[S, A, B](seq: Seq[A], init: B)(fn: (B, A) => State[S, B]): State[S, B] =
+    state => Fold(state, seq, init, fn)
+  def zip[S, A, B, R](s1: State[S, A], s2: State[S, B], sel: (A, B) => R): State[S, R] = for
+    a <- s1
+    b <- s2
+  yield sel(a, b)
 
-  def derive[A](fn: Scene => Scene, project: Scene => A): State[A] = scene =>
-    val s1 = fn(scene)
-    (s1, project(s1))
+  private def selLeft[A, B](a: A, b: B) = a
+  private def selRight[A, B](a: A, b: B) = b
+  private def selBoth[A, B](a: A, b: B) = (a, b)
+  private def selUnit(a: Any, b: Any) = a
 
-  def fold[A, B](seq: Iterable[A], start: B)(fn: (A, B) => State[B]): State[B] = scene =>
-    var acc = start
-    var s = scene
-    val it = seq.iterator
-    while it.hasNext do
-      val a = it.next()
-      val (s1, b) = fn(a, acc)(s)
-      acc = b
-      s = s1
-    (s, acc)
-
-  extension [A](fa: State[A])
-    def map[B](f: A => B): State[B] = s =>
-      val (s1, a) = fa(s)
-      (s1, f(a))
-
-    def flatMap[B](f: A => State[B]): State[B] = s =>
-      val (s1, a) = fa(s)
-      f(a)(s1)
-
-    def mapScene[B](f: Scene ?=> A => B): State[B] = s =>
-      val (s1, a) = fa(s)
-      given Scene = s1
-      (s1, f(a))
-
-    def run(s: Scene): (Scene, A) = fa(s)
-
-    def asUnit: State[Unit] = fa.map(_ => ())
-    
-    infix def zip[B](fb: State[B]): State[(A, B)] = s =>
-      val (s1, a) = fa(s)
-      val (s2, b) = fb(s1)
-      (s2, (a, b))
-
-    infix def zipLeft(fb: State[Any]): State[A] = s =>
-      val (s1, a) = fa(s)
-      val (s2, _) = fb(s1)
-      (s2, a)
-  
-    infix def zipRight[B](fb: State[B]): State[B] = s =>
-      val (s1, _) = fa(s)
-      val (s2, b) = fb(s1)
-      (s2, b)
-  
-    infix def zipUnit(fb: State[Any]): State[Unit] = s =>
-      val (s1, _) = fa(s)
-      val (s2, _) = fb(s1)
-      (s2, ())
-
-  extension (fa: State[Boolean])
-    def when[T](tb: => State[T], eb: => State[T]): State[T] = scene =>
-      val (s2, b) = fa(scene)
-      if b then tb(s2)
-      else eb(s2)
-
+  extension [S, A](fa: State[S, A])
+    def applyState(s: S): Trampoline[S, A] = fa(s)
+    def flatMap[B](f: A => State[S, B]): State[S, B] = state => FlatMap(state, fa, f)
+    def map[B](f: A => B): State[S, B] = flatMap(a => State.pure(f(a)))
+    def run(state: S): TrampolineResult[S, A] = Trampoline.run(fa(state))
+    infix def zip[B](fb: State[S, B]): State[S, (A, B)] = State.zip(fa, fb, selBoth)
+    infix def zipLeft[B](fb: State[S, B]): State[S, A] = State.zip(fa, fb, selLeft)
+    infix def zipRight[B](fb: State[S, B]): State[S, B] = State.zip(fa, fb, selRight)
+    infix def zipUnit[B](fb: State[S, B]): State[S, Unit] = State.zip(fa, fb, selUnit)
+    infix def asUnit: State[S, Unit] = fa.map(_ => ())
